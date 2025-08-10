@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benjamin Graham Stock Screener</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 2em; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #444; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:disabled { background-color: #aaa; }
+        #loading { display: none; margin-top: 1em; color: #555; }
+        .results-container { margin-top: 2em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        h2 { border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Benjamin Graham Stock Screener</h1>
+        <p>Click the button below to screen for stocks based on Benjamin Graham's value investing criteria.</p>
+        <button id="run-button">Run Screener</button>
+        <div id="loading">Screening stocks, please wait...</div>
+
+        <div id="results" class="results-container"></div>
+    </div>
+
+    <script>
+        const runButton = document.getElementById('run-button');
+        const loadingDiv = document.getElementById('loading');
+        const resultsDiv = document.getElementById('results');
+
+        runButton.addEventListener('click', async () => {
+            runButton.disabled = true;
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/run_screener', { method: 'POST' });
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = '<p>An error occurred while running the screener. Please try again later.</p>';
+                console.error('Error:', error);
+            } finally {
+                runButton.disabled = false;
+                loadingDiv.style.display = 'none';
+            }
+        });
+
+        function displayResults(data) {
+            let html = '<h2>All Stocks Passing Criteria</h2>';
+            if (data.passed_stocks.length > 0) {
+                html += createTable(data.passed_stocks);
+            } else {
+                html += '<p>No stocks passed all the criteria.</p>';
+            }
+
+            html += '<h2 style="margin-top: 2em;">Passing Stocks Under $50</h2>';
+            if (data.filtered_stocks.length > 0) {
+                html += createTable(data.filtered_stocks);
+            } else {
+                html += '<p>No passing stocks found under $50.</p>';
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function createTable(stocks) {
+            let table = '<table><thead><tr><th>Ticker</th><th>Price</th><th>P/E Ratio</th><th>P/B Ratio</th><th>Current Ratio</th><th>Debt-to-Asset Ratio</th></tr></thead><tbody>';
+            stocks.forEach(stock => {
+                table += `<tr>
+                    <td>${stock.ticker}</td>
+                    <td>$${stock.price.toFixed(2)}</td>
+                    <td>${stock.pe_ratio}</td>
+                    <td>${stock.pb_ratio}</td>
+                    <td>${stock.current_ratio}</td>
+                    <td>${stock.debt_to_asset_ratio}</td>
+                </tr>`;
+            });
+            table += '</tbody></table>';
+            return table;
+        }
+    </script>
+</body>
+</html>
